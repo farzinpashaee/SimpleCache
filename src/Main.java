@@ -6,14 +6,12 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
 
-
         SimpleCache cache = SimpleCache.getInsance();
-
         while(true) {
-            String c = cache.getCacheItem("some.key", Calendar.SECOND, 5, () -> {
-                return "XXX";
-            });
-            System.out.println(c);
+            String cachedValue = cache.getCacheItem("some.key",() -> {
+                return "value";
+            }, Calendar.SECOND, 5);
+            System.out.println(cachedValue);
             Thread.sleep(1000);
         }
 

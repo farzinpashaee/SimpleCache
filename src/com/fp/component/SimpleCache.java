@@ -8,6 +8,7 @@ public class SimpleCache {
 
     private HashMap<String, CacheItem<?>> cache = new HashMap<>();
     private static SimpleCache simpleCache;
+    private final static Integer DEFAULT_EXPIRE_DURATION_MIN = 30;
 
     private SimpleCache(){}
 
@@ -16,36 +17,37 @@ public class SimpleCache {
         return simpleCache;
     }
 
-    public <T> T getCacheItem( String key, Date expireDateTime, CacheFunctionalInterface<T> function ){
-        CacheItem<T> cacheItem = null;
-        if( cache.get(key) == null ){
-            this.<T> loadCache(key, expireDateTime, function);
+    public <T> T getCacheItem( String key, CacheFunctionalInterface<T> function){
+        return this.<T> getCacheItem(key, function, Calendar.MINUTE, DEFAULT_EXPIRE_DURATION_MIN);
+    }
+
+    public <T> T getCacheItem( String key, CacheFunctionalInterface<T> function, Date expireDateTime){
+        CacheItem<T> cacheItem = (CacheItem<T>) cache.get(key);
+        if( cacheItem == null ){
+            cacheItem = new CacheItem<>();
+            cacheItem.setFunction(function);
+            cacheItem.setExpireDateTime(expireDateTime);
+            cacheItem.setLastUpdateDateTime(new Date());
+            cacheItem.setCacheContent(function.execute());
+            cache.put(key,cacheItem);
         } else {
-            cacheItem = (CacheItem<T>) cache.get(key);
-            if( cacheItem.getExpireDateTime().compareTo( new Date()) < 0 ) {
-                this.<T>loadCache(key, expireDateTime, function);
+            if( cacheItem.isEvicted() || cacheItem.getExpireDateTime().compareTo( new Date()) < 0 ) {
+                cacheItem.setExpireDateTime(expireDateTime);
+                cacheItem.setLastUpdateDateTime(new Date());
+                cacheItem.setCacheContent(function.execute());
             }
         }
-        cacheItem = (CacheItem<T>) cache.get(key);
         return cacheItem.getCacheContent();
     }
 
-    public <T> T getCacheItem(String key, Integer field, Integer amount, CacheFunctionalInterface<T> function ){
+    public <T> T getCacheItem(String key, CacheFunctionalInterface<T> function, Integer field, Integer amount ){
         Calendar expireDateTimeCalendar = Calendar.getInstance();
         expireDateTimeCalendar.add( field, amount );
-        return this.<T> getCacheItem(key, expireDateTimeCalendar.getTime(), function);
+        return this.<T> getCacheItem(key, function, expireDateTimeCalendar.getTime());
     }
 
     public void evict( String key ){
         if( cache.get(key) != null ) cache.get(key).setEvicted(true);
-    }
-
-    private <T> void loadCache( String key, Date expireDateTime, CacheFunctionalInterface<T> function ){
-        CacheItem<T> cacheItem = new CacheItem<>();
-        cacheItem.setExpireDateTime(expireDateTime);
-        cacheItem.setLastUpdateDateTime(new Date());
-        cacheItem.setCacheContent( function.execute() );
-        cache.put( key, cacheItem );
     }
 
     private static class CacheItem<T> {
@@ -54,6 +56,7 @@ public class SimpleCache {
         private Date lastUpdateDateTime = new Date();
         private boolean evicted = false;
         private T cacheContent;
+        private CacheFunctionalInterface<T> function;
 
         public Date getExpireDateTime() {
             return expireDateTime;
@@ -85,6 +88,14 @@ public class SimpleCache {
 
         public void setLastUpdateDateTime(Date lastUpdateDateTime) {
             this.lastUpdateDateTime = lastUpdateDateTime;
+        }
+
+        public CacheFunctionalInterface<T> getFunction() {
+            return function;
+        }
+
+        public void setFunction(CacheFunctionalInterface<T> function) {
+            this.function = function;
         }
     }
 
