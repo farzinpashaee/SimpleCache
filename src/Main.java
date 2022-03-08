@@ -4,15 +4,16 @@ import java.util.Calendar;
 
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, SimpleCache.CacheItemNotFound {
 
-        SimpleCache cache = SimpleCache.getInsance();
+        SimpleCache cache = SimpleCache.getInstance();
         while(true) {
-            String cachedValue = cache.getCacheItem("some.key",() -> {
+            String cachedValue = cache.cacheItem("some.key",() -> {
                 return "value";
-            }, Calendar.SECOND, 5);
+            }, Calendar.MINUTE, 5);
             System.out.println(cachedValue);
             Thread.sleep(1000);
+            String s = cache.getCacheItem("some.key");
         }
 
     }

@@ -12,16 +12,25 @@ public class SimpleCache {
 
     private SimpleCache(){}
 
-    public static SimpleCache getInsance(){
+    public static SimpleCache getInstance(){
         if( simpleCache == null ) simpleCache = new SimpleCache();
         return simpleCache;
     }
 
-    public <T> T getCacheItem( String key, CacheFunctionalInterface<T> function){
-        return this.<T> getCacheItem(key, function, Calendar.MINUTE, DEFAULT_EXPIRE_DURATION_MIN);
+    public <T> T getCacheItem( String key ) throws CacheItemNotFound {
+        CacheItem<T> cacheItem = (CacheItem<T>) cache.get(key);
+        if( cacheItem == null ) throw new CacheItemNotFound();
+        if( cacheItem.isEvicted() || cacheItem.getExpireDateTime().compareTo( new Date()) < 0 ){
+            cacheItem.setCacheContent(cacheItem.getFunction().execute());
+        }
+        return cacheItem.getCacheContent();
     }
 
-    public <T> T getCacheItem( String key, CacheFunctionalInterface<T> function, Date expireDateTime){
+    public <T> T cacheItem( String key, CacheFunctionalInterface<T> function){
+        return this.<T> cacheItem(key, function, Calendar.MINUTE, DEFAULT_EXPIRE_DURATION_MIN);
+    }
+
+    public <T> T cacheItem( String key, CacheFunctionalInterface<T> function, Date expireDateTime){
         CacheItem<T> cacheItem = (CacheItem<T>) cache.get(key);
         if( cacheItem == null ){
             cacheItem = new CacheItem<>();
@@ -40,10 +49,10 @@ public class SimpleCache {
         return cacheItem.getCacheContent();
     }
 
-    public <T> T getCacheItem(String key, CacheFunctionalInterface<T> function, Integer field, Integer amount ){
+    public <T> T cacheItem(String key, CacheFunctionalInterface<T> function, Integer field, Integer amount ){
         Calendar expireDateTimeCalendar = Calendar.getInstance();
         expireDateTimeCalendar.add( field, amount );
-        return this.<T> getCacheItem(key, function, expireDateTimeCalendar.getTime());
+        return this.<T> cacheItem(key, function, expireDateTimeCalendar.getTime());
     }
 
     public void evict( String key ){
@@ -101,6 +110,12 @@ public class SimpleCache {
 
     public static interface CacheFunctionalInterface<T> {
         public T execute();
+    }
+
+    public static class CacheItemNotFound extends Exception {
+        public CacheItemNotFound(){
+            super();
+        }
     }
 
 }
